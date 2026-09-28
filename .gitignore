@@ -1,0 +1,4 @@
+# Raw BTS files are large; download them from TranStats (see README)
+data/
+*.csv
+.DS_Store
