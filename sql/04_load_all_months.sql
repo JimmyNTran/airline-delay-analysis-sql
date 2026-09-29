@@ -10,6 +10,8 @@
 --   1. Edit the v_paths and v_months arrays below so they list
 --      every month's CSV file you have, in matching order
 --      (v_paths[1] must correspond to v_months[1], etc).
+--      The paths below are placeholders — point them at wherever
+--      you've saved the BTS monthly CSVs on your own machine.
 --   2. Run this whole script. It will:
 --        - (Re)create a single reusable staging table
 --        - Rebuild flights_clean from scratch
@@ -124,18 +126,18 @@ CREATE TABLE flights_clean(
 DO $$
 DECLARE
     v_paths TEXT[] := ARRAY[
-        'C:\airline_data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_1.csv',
-        'C:\airline_data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_2.csv',
-        'C:\airline_data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_3.csv',
-        'C:\airline_data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_4.csv',
-        'C:\airline_data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_5.csv',
-        'C:\airline_data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_6.csv',
-        'C:\airline_data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_7.csv',
-        'C:\airline_data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_8.csv',
-        'C:\airline_data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_9.csv',
-        'C:\airline_data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_10.csv',
-        'C:\airline_data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_11.csv',
-        'C:\airline_data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_12.csv'
+        'C:\path\to\your\data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_1.csv',
+        'C:\path\to\your\data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_2.csv',
+        'C:\path\to\your\data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_3.csv',
+        'C:\path\to\your\data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_4.csv',
+        'C:\path\to\your\data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_5.csv',
+        'C:\path\to\your\data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_6.csv',
+        'C:\path\to\your\data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_7.csv',
+        'C:\path\to\your\data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_8.csv',
+        'C:\path\to\your\data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_9.csv',
+        'C:\path\to\your\data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_10.csv',
+        'C:\path\to\your\data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_11.csv',
+        'C:\path\to\your\data\On_Time_Marketing_Carrier_On_Time_Performance_(Beginning_January_2018)_2025_12.csv'
     ];
     v_months DATE[] := ARRAY[
         DATE '2025-01-01',
