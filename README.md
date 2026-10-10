@@ -18,12 +18,12 @@ A SQL project analyzing a full year of U.S. flight data from the Bureau of Trans
 | Security | 0.2% | 51.1 | 147,553 |
 
 1. **Most delay time is within the airline's control.** Late Aircraft and Carrier causes account for 68.3% of delayed flights and about 74% of all delay minutes. Weather is the most severe per incident (119.9 min) but only 4.1% of delays and about 7% of minutes lost.
-2. **Raw counts mislead.** American has the most Late Aircraft delays (~202K) simply because it flies the most. Rated against each carrier's own flights, the ranking reverses: Frontier (12.54%) and Allegiant (11.30%) are worst; Delta (5.78%) and United (6.62%) are best.
-3. **A fair comparison changes the on-time ranking.** Keeping only routes flown by 2+ carriers moves United from 6th to 4th, while Frontier stays last in both rankings. About 90% of Allegiant's network has no direct competitor, so its on-time score can't be fairly benchmarked.
-4. **Weather drives cancellations, not delays.** Weather is 4.1% of delays but 74.9% of American's cancellations and 58.7% of Allegiant's. American's weather cancellations are concentrated at DFW (19.2%) and peak in January (ice) and July (thunderstorms).
-5. **Problem airports fall into two clusters:** mountain-resort airports (ASE, EGE) where weather causes 14.7% of delays (~3.6x the system rate), and Allegiant's secondary leisure airports (SFB, PIE, LCK).
+2. **Raw counts mislead.** American has the most Late Aircraft delays (~202K) simply because it flies the most. Rated against each carrier's own flights, two of the smallest carriers are worst: Frontier (12.54%) and Allegiant (11.30%). Spirit (5.00%) and Delta (5.78%) are best.
+3. **A fair comparison barely moves the on-time ranking.** Keeping only routes flown by 2+ carriers, Frontier stays last. United moves from 6th to 4th because Southwest and Alaska do worse on contested routes, not because United improved. About 90% of Allegiant's network has no direct competitor, so its on-time score can't be fairly benchmarked.
+4. **Weather drives cancellations, not delays.** Weather is 4.1% of delayed flights but 74.9% of American's cancellations and 58.7% of Allegiant's. American's weather cancellations are concentrated at DFW (19.2%; top 5 airports 46.6%) and peak in January and July.
+5. **Problem airports:** mountain-resort airports (ASE, EGE), where weather causes 14.7% of delays (~3.6x the system rate) though Carrier is still the #1 cause, and Allegiant's leisure airports (SFB, PIE, LCK).
 
-**Recommendations:** add schedule buffer for Frontier and Allegiant in June–July and December; weather-contingency and de-icing capacity for mountain airports; DFW weather-contingency planning for American across both its winter and summer storm seasons.
+**Recommendations:** add schedule buffer for Frontier and Allegiant in June–July and December; weather-contingency and de-icing capacity for mountain airports; weather-contingency planning for American at DFW and its other top cancellation airports.
 
 Full write-up: [`docs/findings_summary.md`](docs/findings_summary.md)
 
@@ -47,7 +47,7 @@ flowchart LR
 | 2. Validate | [`02_validation.sql`](sql/02_validation.sql) | Row count (644,987 for Dec 2025), date range, duplicate flags, cancellation codes, airport counts, sample rows |
 | 3. Clean | [`03_create_flights_clean.sql`](sql/03_create_flights_clean.sql) | Casts to `DATE` / `INTEGER` / `BOOLEAN`; builds route, cancelled, diverted, delayed-15+, severe-60+, on-time and departure-period flags |
 | 4. Scale | [`04_load_all_months.sql`](sql/04_load_all_months.sql) | PL/pgSQL loop loads all 12 months, printing staged and inserted row counts per month; safe to re-run |
-| 5. Analyze | [`05_kpi_analysis.sql`](sql/05_kpi_analysis.sql) | Primary-cause view, then four question groups using CTEs, joins, `HAVING`, `UNION ALL` and window functions |
+| 5. Analyze | [`05_kpi_analysis.sql`](sql/05_kpi_analysis.sql) | Full-year validation checks (row counts, month coverage, duplicates, reconciliation; results recorded in the file), the primary-cause view, then four question groups using CTEs, joins, `HAVING`, `UNION ALL` and window functions |
 
 ### Techniques worth noting
 
@@ -75,8 +75,10 @@ Midway through the project BTS stopped serving the pipe-delimited ASCII layout. 
 
 - BTS assigns cause minutes only to flights delayed 15+ minutes, so cause analysis covers delayed flights only.
 - BTS labels only the first flight in a delay chain as "Weather"; later flights become "Late Aircraft," which can hide the true root cause.
-- If two causes tie for most minutes, the first listed wins.
+- If two causes tie for most minutes, the first listed wins; 14 delayed flights with no recorded cause minutes default to "Carrier" (0.001% of delayed flights).
+- Flights are filed under the marketing carrier, so legacy carriers' data includes regional partners' flights. The fleet-utilization check uses only each airline's own operated flights.
 - Flights per tail number is only a proxy for fleet utilization.
+- The airport ranking's 1,000-flight minimum admits very small airports whose rates are noisy.
 - One year of data (2025).
 
 ## Repository structure

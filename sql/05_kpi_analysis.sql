@@ -12,11 +12,13 @@
 -- every query below can be highlighted and run on its own.
 --
 -- CONTENTS:
---   SETUP  primary_cause_view (reusable delay-cause labeling)
---   Q1     What is the #1 cause of flight delays?
---   Q2     Which carriers perform best, fairly compared?
---   Q2b    Which carriers drive the Late Aircraft problem?
---   Q2c    Why do Frontier (F9) and Allegiant (G4) rank worst?
+--   SETUP       primary_cause_view (reusable delay-cause labeling)
+--   VALIDATION  data checks run before any analysis (results recorded)
+--   Q1          What is the #1 cause of flight delays?
+--   Q2          Which carriers perform best, fairly compared?
+--   Q2b         Which carriers drive the Late Aircraft problem?
+--   Q2c         Why do Frontier (F9) and Allegiant (G4) have the worst
+--               Late Aircraft rates?
 --   Q3     Which routes and airports perform worst, and why?
 --   Q4     Which carriers cancel most, where, when, and why?
 -- ============================================================
@@ -33,6 +35,11 @@
 -- Saved as a permanent view so the labeling logic is written once
 -- instead of being re-pasted as a CTE in every query below.
 -- Note: if two causes tie, CASE picks the first one listed.
+-- Edge case: 14 delayed flights have no cause minutes recorded at all
+-- (max_cause_minutes = 0, see check V7). GREATEST returns 0 and CASE
+-- matches the first line, so they are labeled 'Carrier'. That is
+-- 0.001% of delayed flights and changes no percentage; a production
+-- version would label them 'Unknown'.
 
 DROP VIEW IF EXISTS primary_cause_view;
 
@@ -66,6 +73,76 @@ SELECT
     END AS primary_cause
 FROM delay_causes;
 
+-- ============================================================
+-- VALIDATION: data checks run before any analysis
+-- ============================================================
+-- Each check below was run against the loaded flights_clean table.
+-- Results are recorded under each query.
+
+-- V1. Total row count (completeness, the headline number).
+SELECT COUNT(*) AS total_flights
+FROM flights_clean;
+-- RESULT: 7,736,770 flights.
+
+-- V2. Count by month: catches a month loaded twice or missing.
+SELECT source_month,
+       COUNT(*)          AS flights,
+       MIN(flight_date)  AS first_date,
+       MAX(flight_date)  AS last_date
+FROM flights_clean
+GROUP BY source_month
+ORDER BY source_month;
+-- RESULT: 12 months, each loaded once (559,577 in Feb to 696,049 in
+-- Jul). Every month's first and last flight_date fall inside that
+-- month, and the 12 months sum to 7,736,770. December = 644,987,
+-- matching the source file's expected count in 02_validation.sql.
+
+-- V3. Rows filed under the wrong month (consistency).
+SELECT COUNT(*) AS mismatched_rows
+FROM flights_clean
+WHERE DATE_TRUNC('month', flight_date)::date <> source_month;
+-- RESULT: 0.
+
+-- V4. Duplicate flights (uniqueness).
+SELECT marketing_carrier, marketing_flight_number, flight_date, origin, destination,
+       COUNT(*) AS copies
+FROM flights_clean
+GROUP BY marketing_carrier, marketing_flight_number, flight_date, origin, destination
+HAVING COUNT(*) > 1
+LIMIT 20;
+-- RESULT: no rows returned.
+
+-- V5. Carrier totals reconcile to the grand total.
+SELECT marketing_carrier, COUNT(*) AS flights,
+       SUM(COUNT(*)) OVER () AS grand_total
+FROM flights_clean
+GROUP BY marketing_carrier
+ORDER BY flights DESC;
+-- RESULT: 10 carriers summing to 7,736,770.
+
+-- V6. Cross-check of Q1 using a second method: delay minutes SPLIT
+-- across every contributing cause (Q1 instead assigns each flight's
+-- whole delay to its single primary cause).
+SELECT
+  ROUND(100.0 * SUM(COALESCE(late_aircraft_delay_minutes,0) + COALESCE(carrier_delay_minutes,0))
+        / SUM(COALESCE(late_aircraft_delay_minutes,0) + COALESCE(carrier_delay_minutes,0)
+            + COALESCE(nas_delay_minutes,0) + COALESCE(weather_delay_minutes,0)
+            + COALESCE(security_delay_minutes,0)), 1) AS late_plus_carrier_pct,
+  ROUND(100.0 * SUM(COALESCE(weather_delay_minutes,0))
+        / SUM(COALESCE(late_aircraft_delay_minutes,0) + COALESCE(carrier_delay_minutes,0)
+            + COALESCE(nas_delay_minutes,0) + COALESCE(weather_delay_minutes,0)
+            + COALESCE(security_delay_minutes,0)), 1) AS weather_pct
+FROM flights_clean;
+-- RESULT: Late Aircraft + Carrier = 71.8%, Weather = 6.5%.
+-- Q1b's primary-cause method gives 73.6% and 6.7%. Both methods agree:
+-- about three-quarters of delay time, with Weather around 7%.
+
+-- V7. Delayed flights with no cause minutes recorded (edge case).
+SELECT COUNT(*) AS no_cause_flights
+FROM primary_cause_view
+WHERE max_cause_minutes = 0;
+-- RESULT: 14 of 1,685,334 delayed flights (see SETUP note).
+
 
 -- ============================================================
 -- Q1: What is the #1 cause of flight delays?
@@ -92,13 +169,13 @@ GROUP BY primary_cause
 ORDER BY total_minutes_lost DESC;
 
 -- FINDING:
--- Late Aircraft (38.9%) and Carrier (29.4%) delays are 68.3% of
--- delayed flights and ~74% of all delay-minutes lost (91.7M of
--- 124.7M). Weather is the most severe per incident (119.9 min
--- average) but rare: 4.1% of delayed flights and ~7% of minutes
--- lost. Improving turnaround times and reducing cascading
--- late-aircraft delays would do far more for reliability than any
--- weather-mitigation effort.
+-- Late Aircraft (38.9%) and Carrier (29.4%) are the top primary causes:
+-- together about two-thirds (68.3%) of the 1,685,334 delayed flights,
+-- and ~74% of delay-minutes (91.7M of 124.7M). Weather is the most
+-- severe per incident (119.9 min average) but rare: 4.1% of delayed
+-- flights and ~7% of minutes lost (8.3M). Improving turnaround times
+-- and reducing cascading late-aircraft delays would do far more for
+-- reliability than weather mitigation.
 
 
 -- ============================================================
@@ -164,11 +241,17 @@ GROUP BY f.marketing_carrier, rt.route_type
 ORDER BY f.marketing_carrier, rt.route_type;
 
 -- FINDING:
--- Frontier stays dead last in both rankings, so its poor performance
--- isn't explained by a harder route network. United moves up (6th to
--- 4th) once uncontested routes are removed. Allegiant's score is close
--- to unusable for benchmarking: ~90% of its flights are on routes with
--- no direct competitor.
+-- Frontier is last in both rankings (72.1% naive, 72.0% on shared
+-- routes), so its poor performance isn't explained by a harder route
+-- network.
+-- United moves from 6th to 4th, but not because its own rate improved
+-- (78.2% -> 78.1%; Q2-3 shows 78.3% exclusive vs. 78.1% shared).
+-- Southwest (78.6% -> 77.8%) and Alaska (78.5% -> 77.0%) drop on
+-- contested routes, so their naive scores were partly boosted by
+-- exclusive routes. Ranks 3-6 sit within 0.4 points in the naive
+-- ranking, so this is a small shift in a tight group.
+-- Allegiant is hard to benchmark: 89.6% of its flights are on routes
+-- with no direct competitor (Q2-3).
 
 
 -- ============================================================
@@ -207,37 +290,51 @@ LEFT JOIN late_aircraft_by_carrier la ON ct.marketing_carrier = la.marketing_car
 ORDER BY pct_of_flights_late_aircraft DESC;
 
 -- FINDING:
--- The rate reverses the raw ranking. AA, UA, and DL have some of the
--- LOWEST Late Aircraft rates once adjusted for size (DL is best at
--- 5.78%). Frontier (12.54%) and Allegiant (11.30%), two of the
--- smallest carriers, are worst, the opposite of what "bigger hubs =
--- more cascade risk" would predict.
+-- Adjusting for size reshuffles the raw ranking. Frontier (12.54%) and
+-- Allegiant (11.30%), two of the smallest carriers, have the worst
+-- rates, the opposite of what "bigger hubs = more cascade risk" would
+-- predict. American (10.15%) and Southwest (10.73%) lead on raw counts
+-- and stay in the worst four by rate. United (6.62%) and Delta (5.78%)
+-- fall into the better half, and Spirit has the lowest rate (5.00%).
+-- The 10 raw counts sum to 656,381, matching Q1's Late Aircraft total.
 
 
 -- ============================================================
--- Q2c: Why do Frontier (F9) and Allegiant (G4) rank worst?
+-- Q2c: Why do Frontier (F9) and Allegiant (G4) have the worst
+--      Late Aircraft rates?
 -- ============================================================
 
--- Q2c-1 (Hypothesis 1, RULED OUT): tighter aircraft utilization.
+-- Q2c-1 (Hypothesis 1): tighter aircraft utilization.
 -- Flights per distinct tail number is a proxy for how hard each
--- carrier works its fleet. (Proxy only: tail counts include planes
--- that joined or left the fleet mid-year.)
+-- carrier works its fleet. Filtered to flights each airline OPERATES
+-- itself (operating_carrier = marketing_carrier), because this BTS
+-- table files flights under the marketing carrier, which would mix
+-- regional partners' aircraft into the legacy carriers' counts.
+-- (Proxy only: tail counts include planes that joined or left the
+-- fleet mid-year.)
 WITH carrier_aircraft AS (
     SELECT
-        marketing_carrier,
+        operating_carrier,
         COUNT(*) AS total_flights,
         COUNT(DISTINCT tail_number) AS distinct_aircraft
     FROM flights_clean
     WHERE tail_number IS NOT NULL
-    GROUP BY marketing_carrier
+      AND operating_carrier = marketing_carrier
+    GROUP BY operating_carrier
 )
 SELECT
-    marketing_carrier,
+    operating_carrier,
     total_flights,
     distinct_aircraft,
     ROUND(total_flights::NUMERIC / distinct_aircraft, 1) AS flights_per_aircraft
 FROM carrier_aircraft
 ORDER BY flights_per_aircraft DESC;
+-- RESULT: Hypothesis 1 NOT SUPPORTED: no consistent link between fleet
+-- utilization and Late Aircraft rate. Southwest (1st) and Frontier
+-- (3rd) work their fleets hard and have high rates, but Hawaiian
+-- (2nd) and Spirit (4th) work theirs just as hard with the two
+-- lowest rates, and Allegiant (8th) has the 2nd-worst rate while
+-- using its planes less than most.
 
 -- Q2c-2 (Hypothesis 2): seasonal pattern.
 -- Late Aircraft rate by month for F9 and G4.
@@ -295,6 +392,8 @@ ORDER BY cmt.marketing_carrier, cmt.source_month;
 
 -- Q2c-4: Ground congestion via taxi times, an independent signal that
 -- doesn't depend on BTS's delay-cause labeling.
+-- Note: diverted flights are included, and a flight missing either
+-- taxi value drops out of avg_total_taxi_minutes.
 SELECT
     marketing_carrier,
     source_month,
@@ -308,19 +407,27 @@ GROUP BY marketing_carrier, source_month
 ORDER BY marketing_carrier, source_month;
 
 -- FINDING:
--- Hypothesis 1 ruled out: Southwest works its fleet hardest of all 10
--- carriers yet doesn't have the worst Late Aircraft rate.
--- Hypothesis 2 partly supported: F9/G4 Late Aircraft rates peak in
--- June-July and bottom out in September, and weather delays and taxi
--- times peak in the same summer months. December's spike is only
--- partly explained: taxi times rise, but same-flight weather
--- attribution is low, likely because BTS tags only the FIRST delayed
--- flight in a chain as "Weather" and relabels every inherited delay
--- downstream as "Late Aircraft." January is a counter-example: G4's
--- taxi times are its highest of the year while Late Aircraft stays
--- low, so congestion alone isn't sufficient either.
+-- Hypothesis 1 (fleet utilization): not supported, see Q2c-1 result.
+-- Hypothesis 2 (seasonality): partly supported.
+--   * Both carriers' Late Aircraft rates peak in June-July (F9 17.4% /
+--     15.9%, G4 14.5% / 13.9%) and bottom out in September (F9 8.7%,
+--     G4 7.2%). Weather delays rise in the same summer months for both.
+--   * Frontier's taxi times peak in June-July, matching its Late
+--     Aircraft peak. Allegiant's taxi times peak in winter (Jan-Feb),
+--     with summer only mid-range, while its Late Aircraft rate is low
+--     in Jan-Feb, so congestion alone doesn't explain it. Taxi swings
+--     are modest for both (2-3 minutes across the year).
+--   * December's Late Aircraft spike (F9 14.7%; G4 14.7%, its highest
+--     month) is NOT matched by weather delays (low for F9, mid-year for
+--     G4). This is consistent with BTS tagging only the FIRST delayed
+--     flight in a chain as "Weather" and relabeling every inherited
+--     delay downstream as "Late Aircraft." Taxi times rise modestly in
+--     December for both.
+-- Weather-coded delays are small (0.2-3.5% of flights) next to Late
+-- Aircraft (7-17%), so the two move together; this doesn't show that
+-- weather causes the Late Aircraft delays.
 -- Takeaway: F9/G4 would benefit most from added schedule buffer in
--- June-July and December, when multiple stressors compound.
+-- June-July and December.
 
 
 -- ============================================================
@@ -343,6 +450,8 @@ LIMIT 15;
 
 -- Q3b: Worst airports. UNION ALL stacks origin and destination rows so
 -- each flight counts toward BOTH airports it touches.
+-- Note: the 1,000-flight cutoff admits very small airports (about
+-- 1,400-2,000 flights), whose rates swing more from chance.
 WITH airport_flights AS (
     SELECT origin AS airport, on_time
     FROM flights_clean
@@ -361,13 +470,14 @@ HAVING COUNT(*) >= 1000
 ORDER BY on_time_pct ASC
 LIMIT 15;
 
--- Q3c: Which carriers serve the problem airports?
+-- Q3c: Which carriers serve the problem airports? (departures only)
 SELECT
     origin AS airport,
     marketing_carrier,
     COUNT(*) AS flights
 FROM flights_clean
-WHERE origin IN ('SFB', 'PIE', 'ASE', 'EGE', 'LCK')
+WHERE origin IN ('USA', 'SFB', 'PIE', 'LCK', 'ASE', 'EGE',
+                 'SUX', 'CMX', 'SLN', 'COD', 'DIK')
 GROUP BY origin, marketing_carrier
 ORDER BY airport, flights DESC;
 
@@ -386,18 +496,24 @@ ORDER BY delayed_flights DESC;
 
 -- FINDING:
 -- Route length is NOT the driver: the 15 worst routes range from 79 to
--- 232 scheduled minutes. The worst airports split into two unrelated
--- clusters:
---   1. Mountain-resort airports (ASE, EGE), served mainly by UA, AA,
---      and DL. Weather causes 14.7% of their delays vs. 4.1% system-
---      wide (~3.6x) and runs longer (127.3 vs. 119.9 min). This is a
---      geography problem even well-resourced carriers can't overcome.
---   2. Allegiant's secondary leisure airports (SFB, PIE, LCK), served
---      almost entirely by G4. Minimal ground infrastructure compounds
---      the carrier's own tight scheduling from Q2c.
--- Treating "small/regional airport" as one category would have missed
--- this distinction. The two clusters need different fixes: weather
--- contingency and de-icing capacity vs. G4 scheduling changes.
+-- 232 scheduled minutes. Aspen appears in 4 of them and DFW in 5 (DFW
+-- is also American's top weather-cancellation airport, Q4c).
+-- Among airports, two clusters stand out:
+--   1. Mountain-resort airports (ASE 3rd-worst, EGE 5th), served mainly
+--      by UA, AA, and DL. Weather causes 14.7% of their delays vs. 4.1%
+--      system-wide (~3.6x) and runs longer (127.3 vs. 119.9 min). But
+--      Carrier is still the #1 cause there (36.2% vs. 29.4% system-
+--      wide), so weather adds risk on top of operational issues rather
+--      than replacing them.
+--   2. Allegiant's leisure airports (SFB 2nd-worst, PIE 7th, LCK 15th),
+--      where every departure is G4, compounding the carrier's own Late
+--      Aircraft problem from Q2b.
+-- Not every poor airport fits these clusters: USA (Concord, NC) is the
+-- single worst (56.8%), and several very small regional airports (SUX,
+-- CMX, SLN, COD, DIK) rank low on small volumes. Q3c shows who serves
+-- them.
+-- The two clusters need different fixes: weather contingency and
+-- de-icing capacity vs. G4 scheduling changes.
 
 
 -- ============================================================
@@ -459,15 +575,32 @@ WHERE marketing_carrier = 'AA'
 GROUP BY source_month
 ORDER BY source_month;
 
+-- Q4e: Does DFW itself follow the same seasonal pattern?
+SELECT
+    source_month,
+    COUNT(*) AS dfw_weather_cancellations
+FROM flights_clean
+WHERE marketing_carrier = 'AA'
+  AND cancelled = TRUE
+  AND cancellation_code = 'B'
+  AND origin = 'DFW'
+GROUP BY source_month
+ORDER BY source_month;
+
 -- FINDING:
--- American cancels most (2.36%, well above the next carrier at 1.77%);
--- Allegiant cancels least (0.47%) despite having one of the worst Late
--- Aircraft rates, suggesting it prefers to delay and still fly.
--- Weather causes only 4.1% of delays but 74.9% of AA's and 58.7% of
--- G4's cancellations: airlines cancel outright once weather is severe.
--- AA's weather cancellations are concentrated at DFW (19.2%, more than
--- double any other airport) and are bimodal by month: January (17.4%,
--- ice) and July (16.5%, severe thunderstorms), while December is low
--- (4.9%). Takeaway: weather-contingency planning at DFW covering both
--- its winter-ice and summer-storm seasons would address a
--- disproportionate share of AA's cancellations.
+-- American cancels most (2.36%): about 1.3x the next carrier (Frontier,
+-- 1.77%) and 1.7x Delta and United (1.36%). Allegiant cancels least
+-- (0.47%) despite the 2nd-worst Late Aircraft rate, which suggests it
+-- may prefer to delay and still fly rather than cancel and refund.
+-- Weather causes only 4.1% of delayed flights but 74.9% of AA's and
+-- 58.7% of G4's cancellations: airlines appear to cancel outright once
+-- weather is severe.
+-- AA's weather cancellations are concentrated: DFW alone is 19.2%
+-- (2.3x the next airport, CLT), and the top 5 airports together are
+-- 46.6%. Across AA's network they are bimodal by month: January
+-- (17.4%) and July (16.5%) peak, December is low (4.9%), and
+-- September-October are lowest (under 2%). Q4e checks whether DFW
+-- itself follows that pattern before tying it to DFW's winter-ice and
+-- summer-storm seasons.
+-- Takeaway: weather-contingency planning at DFW and the other top-5
+-- airports would address nearly half of AA's weather cancellations.
