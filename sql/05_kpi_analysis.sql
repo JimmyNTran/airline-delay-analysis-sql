@@ -601,8 +601,12 @@ ORDER BY source_month;
 -- (2.3x the next airport, CLT), and the top 5 airports together are
 -- 46.6%. Across AA's network they are bimodal by month: January
 -- (17.4%) and July (16.5%) peak, December is low (4.9%), and
--- September-October are lowest (under 2%). Q4e checks whether DFW
--- itself follows that pattern before tying it to DFW's winter-ice and
--- summer-storm seasons.
--- Takeaway: weather-contingency planning at DFW and the other top-5
--- airports would address nearly half of AA's weather cancellations.
+-- September-October are lowest (under 2%).
+-- DFW itself (Q4e, months sum to its 6,767): one sharp January peak
+-- (1,369, ~20%, ice) plus a long March-August storm season (624-797 per
+-- month, 62% of the year combined). September (101), December (56) and
+-- February (264) are quiet. So DFW does not peak in July; AA's network-
+-- wide July peak comes partly from other airports.
+-- Takeaway: weather-contingency planning at DFW (January ice and the
+-- March-August storm season) and the other top-5 airports would address
+-- nearly half of AA's weather cancellations.

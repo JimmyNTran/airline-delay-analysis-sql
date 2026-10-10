@@ -20,10 +20,10 @@ A SQL project analyzing a full year of U.S. flight data from the Bureau of Trans
 1. **Most delay time is within the airline's control.** Late Aircraft and Carrier causes account for 68.3% of delayed flights and about 74% of all delay minutes. Weather is the most severe per incident (119.9 min) but only 4.1% of delays and about 7% of minutes lost.
 2. **Raw counts mislead.** American has the most Late Aircraft delays (~202K) simply because it flies the most. Rated against each carrier's own flights, two of the smallest carriers are worst: Frontier (12.54%) and Allegiant (11.30%). Spirit (5.00%) and Delta (5.78%) are best.
 3. **A fair comparison barely moves the on-time ranking.** Keeping only routes flown by 2+ carriers, Frontier stays last. United moves from 6th to 4th because Southwest and Alaska do worse on contested routes, not because United improved. About 90% of Allegiant's network has no direct competitor, so its on-time score can't be fairly benchmarked.
-4. **Weather drives cancellations, not delays.** Weather is 4.1% of delayed flights but 74.9% of American's cancellations and 58.7% of Allegiant's. American's weather cancellations are concentrated at DFW (19.2%; top 5 airports 46.6%) and peak in January and July.
+4. **Weather drives cancellations, not delays.** Weather is 4.1% of delayed flights but 74.9% of American's cancellations and 58.7% of Allegiant's. American's weather cancellations are concentrated at DFW (19.2%; top 5 airports 46.6%). Network-wide they peak in January and July; at DFW, in January plus a March–August storm season.
 5. **Problem airports fall into three clusters:** mountain-resort airports (ASE, EGE), where weather causes 14.7% of delays (~3.6x the system rate) though Carrier is still the #1 cause; Allegiant-only leisure airports (USA, the single worst, plus SFB, PIE, LCK); and small United-only regional airports (SUX, CMX, SLN, COD, DIK).
 
-**Recommendations:** add schedule buffer for Frontier and Allegiant in June–July and December; weather-contingency and de-icing capacity for mountain airports; weather-contingency planning for American at DFW and its other top cancellation airports.
+**Recommendations:** add schedule buffer for Frontier and Allegiant in June–July and December; weather-contingency and de-icing capacity for mountain airports; weather-contingency planning for American at DFW (January ice and March–August storms) and its other top cancellation airports.
 
 Full write-up: [`docs/findings_summary.md`](docs/findings_summary.md)
 
