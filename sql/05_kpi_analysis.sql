@@ -498,22 +498,24 @@ ORDER BY delayed_flights DESC;
 -- Route length is NOT the driver: the 15 worst routes range from 79 to
 -- 232 scheduled minutes. Aspen appears in 4 of them and DFW in 5 (DFW
 -- is also American's top weather-cancellation airport, Q4c).
--- Among airports, two clusters stand out:
+-- Among the 15 worst airports, three clusters stand out:
 --   1. Mountain-resort airports (ASE 3rd-worst, EGE 5th), served mainly
 --      by UA, AA, and DL. Weather causes 14.7% of their delays vs. 4.1%
 --      system-wide (~3.6x) and runs longer (127.3 vs. 119.9 min). But
 --      Carrier is still the #1 cause there (36.2% vs. 29.4% system-
 --      wide), so weather adds risk on top of operational issues rather
 --      than replacing them.
---   2. Allegiant's leisure airports (SFB 2nd-worst, PIE 7th, LCK 15th),
---      where every departure is G4, compounding the carrier's own Late
---      Aircraft problem from Q2b.
--- Not every poor airport fits these clusters: USA (Concord, NC) is the
--- single worst (56.8%), and several very small regional airports (SUX,
--- CMX, SLN, COD, DIK) rank low on small volumes. Q3c shows who serves
--- them.
--- The two clusters need different fixes: weather contingency and
--- de-icing capacity vs. G4 scheduling changes.
+--   2. Allegiant's leisure airports: USA (Concord, NC, the single worst
+--      at 56.8%), SFB (2nd), PIE (7th), and LCK (15th). Every departure
+--      at all four is G4, compounding the carrier's own Late Aircraft
+--      problem from Q2b.
+--   3. Small United-marketed regional airports: SUX, CMX, SLN, COD, and
+--      DIK, where every departure is UA (about 700-970 departures each,
+--      likely flown by United's regional partners). Their volumes are
+--      small, so these rates swing more from chance.
+-- The clusters need different fixes: weather contingency and de-icing
+-- capacity at mountain airports, G4 scheduling changes, and a closer
+-- look at United's small regional service.
 
 
 -- ============================================================

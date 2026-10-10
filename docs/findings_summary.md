@@ -70,7 +70,7 @@ Raw counts favor large carriers by volume (American: 202,329 Late Aircraft delay
 
 ## 3. Where do delays concentrate?
 
-Route length is not the driver: the 15 worst routes range from 79 to 232 scheduled minutes. Aspen appears in 4 of them and Dallas-Fort Worth in 5 (DFW is also American's top weather-cancellation airport; see Section 4). Among airports, two clusters stand out.
+Route length is not the driver: the 15 worst routes range from 79 to 232 scheduled minutes. Aspen appears in 4 of them and Dallas-Fort Worth in 5 (DFW is also American's top weather-cancellation airport; see Section 4). Among the 15 worst airports, three clusters stand out.
 
 **Cluster 1 — Mountain-resort airports.** Aspen (ASE, 3rd-worst airport) and Eagle-Vail (EGE, 5th) are served mainly by United, American and Delta. Weather causes about 3.6x its system-wide share of delays there, and those delays run longer. But Carrier-caused delays are still the most common cause, at a higher share than system-wide, so weather adds risk on top of operational issues rather than replacing them.
 
@@ -80,11 +80,11 @@ Route length is not the driver: the 15 worst routes range from 79 to 232 schedul
 | Avg. weather delay (min) | 119.9 | 127.3 |
 | Carrier share of delayed flights (#1 cause at ASE/EGE) | 29.4% | 36.2% |
 
-**Cluster 2 — Allegiant's leisure airports.** Sanford (SFB, 2nd-worst airport), St. Pete-Clearwater (PIE, 7th) and Rickenbacker (LCK, 15th) are served only by Allegiant, compounding the carrier's own Late Aircraft problem from Section 2b.
+**Cluster 2 — Allegiant's leisure airports.** Concord, NC (USA) is the single worst airport (56.8% on-time), followed by Sanford (SFB, 2nd-worst), St. Pete-Clearwater (PIE, 7th) and Rickenbacker (LCK, 15th). Every departure at all four is Allegiant, compounding the carrier's own Late Aircraft problem from Section 2b.
 
-**Not every poor airport fits these clusters.** Concord, NC (USA) is the single worst airport (56.8% on-time), and several very small regional airports (SUX, CMX, SLN, COD, DIK) rank low on roughly 1,400–2,000 flights each, where rates swing more from chance. Their carrier mix has not yet been analyzed.
+**Cluster 3 — Small United-marketed regional airports.** Sioux City (SUX), Hancock (CMX), Salina (SLN), Cody (COD) and Dickinson (DIK) are served only by United-branded flights, about 700–970 departures each, likely flown by United's regional partners. Their volumes are small, so these rates swing more from chance.
 
-**Recommendation:** The two clusters need different fixes: weather contingency and de-icing capacity at mountain airports, alongside the carriers' own operations there, versus scheduling changes specific to Allegiant's leisure-airport network.
+**Recommendation:** The clusters need different fixes: weather contingency and de-icing capacity at mountain airports, alongside the carriers' own operations there; scheduling changes specific to Allegiant's leisure-airport network; and a closer look at United's small regional service.
 
 ## 4. Cancellation patterns
 
